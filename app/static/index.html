@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind - Self-Corrective RAG Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0B0F19;
+            --bg-card: rgba(18, 24, 38, 0.85);
+            --bg-input: #151D2E;
+            --accent: #6366F1;
+            --accent-hover: #4F46E5;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(12px);
+            background: rgba(11, 15, 25, 0.7);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, var(--accent), #A855F7);
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #fff;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .brand h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.85rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-link:hover {
+            color: #fff;
+            background: var(--bg-input);
+        }
+
+        .container {
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 2rem;
+            flex: 1;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .doc-item {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .chunk-badge {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818CF8;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], textarea, input[type="file"] {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.5rem 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            color: #fff;
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        /* Chat Area */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: calc(100vh - 180px);
+        }
+
+        .messages-box {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            padding-right: 0.5rem;
+        }
+
+        .msg-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .msg-card.user {
+            border-left: 4px solid var(--accent);
+            background: rgba(21, 29, 46, 0.9);
+        }
+
+        .msg-card.assistant {
+            border-left: 4px solid var(--success);
+        }
+
+        .msg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .msg-body {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .msg-body code {
+            font-family: 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #A5B4FC;
+        }
+
+        .meta-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        .badge.highlight {
+            background: rgba(99, 102, 241, 0.15);
+            color: #A5B4FC;
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .trace-container {
+            margin-top: 0.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: #9CA3AF;
+        }
+
+        .trace-title {
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .trace-step {
+            margin-left: 0.5rem;
+            position: relative;
+            padding-left: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .trace-step::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        .feedback-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .fb-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .fb-btn:hover {
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .input-bar {
+            display: flex;
+            gap: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 12px;
+        }
+
+        .input-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .input-bar input:focus {
+            box-shadow: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loader {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-badge">CRAG</div>
+            <div>
+                <h1>DocuMind RAG</h1>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Self-Corrective LangGraph Technical Assistant</p>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <a href="/docs" target="_blank" class="btn-link">Swagger API</a>
+            <a href="https://github.com" target="_blank" class="btn-link">Source Repo</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar: Documents & Ingestion -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>📚 Indexed Corpus</span>
+                <button class="btn-secondary" onclick="loadDocuments()">↻ Refresh</button>
+            </div>
+            
+            <ul class="doc-list" id="docList">
+                <li style="color: var(--text-muted); font-size: 0.85rem;">Loading documents...</li>
+            </ul>
+
+            <div class="panel-title" style="margin-top: 0.5rem;">
+                <span>⚡ Ingest New Knowledge</span>
+            </div>
+
+            <form id="ingestForm" onsubmit="handleIngest(event)" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div class="input-group">
+                    <label>Upload File (.md, .txt)</label>
+                    <input type="file" id="fileInput" accept=".md,.txt,.py,.json">
+                </div>
+
+                <div class="input-group">
+                    <label>Or Web URL</label>
+                    <input type="text" id="urlInput" placeholder="https://raw.githubusercontent.com/...">
+                </div>
+
+                <button type="submit" class="btn-primary" id="ingestBtn">
+                    Ingest Content
+                </button>
+            </form>
+            <div id="ingestStatus" style="font-size: 0.8rem; min-height: 1rem;"></div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-container">
+            <div class="messages-box" id="messagesBox">
+                <div class="msg-card assistant">
+                    <div class="msg-header">
+                        <span>🤖 Assistant</span>
+                        <span>Ready</span>
+                    </div>
+                    <div class="msg-body">Hello! I am your Technical Documentation Assistant powered by <b>LangGraph Corrective RAG</b>. 
+
+You can ask me questions about FastAPI, LangGraph, Pydantic, or ChromaDB. I will retrieve relevant documentation, verify relevance with self-corrective grading, and cite my sources.</div>
+                </div>
+            </div>
+
+            <form class="input-bar" onsubmit="handleQuery(event)">
+                <input type="text" id="queryInput" placeholder="Ask a question (e.g. 'How does dependency injection work in FastAPI?')" autocomplete="off" required>
+                <button type="submit" class="btn-primary" id="sendBtn">
+                    <span>Ask Assistant</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        async function loadDocuments() {
+            try {
+                const res = await fetch('/documents');
+                const data = await res.json();
+                const list = document.getElementById('docList');
+                list.innerHTML = '';
+                
+                if (!data.documents || data.documents.length === 0) {
+                    list.innerHTML = '<li style="color: var(--text-muted); font-size: 0.85rem;">No documents indexed yet.</li>';
+                    return;
+                }
+
+                data.documents.forEach(doc => {
+                    const li = document.createElement('li');
+                    li.className = 'doc-item';
+                    li.innerHTML = `
+                        <span class="doc-name" title="${doc.source}">📄 ${doc.source}</span>
+                        <span class="chunk-badge">${doc.chunk_count} chunks</span>
+                    `;
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                console.error("Failed to load documents", err);
+            }
+        }
+
+        async function handleIngest(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const urlInput = document.getElementById('urlInput');
+            const status = document.getElementById('ingestStatus');
+            const btn = document.getElementById('ingestBtn');
+
+            const formData = new FormData();
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            } else if (urlInput.value.trim()) {
+                formData.append('url', urlInput.value.trim());
+            } else {
+                status.style.color = 'var(--warning)';
+                status.textContent = 'Please choose a file or enter a URL.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader"></span> Ingesting...';
+            status.textContent = '';
+
+            try {
+                const res = await fetch('/ingest', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    status.style.color = 'var(--success)';
+                    status.textContent = `✓ ${data.message} (${data.chunks_created} chunks)`;
+                    fileInput.value = '';
+                    urlInput.value = '';
+                    loadDocuments();
+                } else {
+                    status.style.color = 'var(--danger)';
+                    status.textContent = data.detail || 'Ingestion failed';
+                }
+            } catch (err) {
+                status.style.color = 'var(--danger)';
+                status.textContent = 'Network error during ingestion.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Ingest Content';
+            }
+        }
+
+        async function handleQuery(e) {
+            e.preventDefault();
+            const input = document.getElementById('queryInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const msgBox = document.getElementById('messagesBox');
+            const query = input.value.trim();
+            if (!query) return;
+
+            // Append user message
+            const userCard = document.createElement('div');
+            userCard.className = 'msg-card user';
+            userCard.innerHTML = `
+                <div class="msg-header"><span>👤 You</span></div>
+                <div class="msg-body">${escapeHtml(query)}</div>
+            `;
+            msgBox.appendChild(userCard);
+            input.value = '';
+            msgBox.scrollTop = msgBox.scrollHeight;
+
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loader"></span> Thinking...';
+
+            // Assistant placeholder
+            const assistCard = document.createElement('div');
+            assistCard.className = 'msg-card assistant';
+            assistCard.innerHTML = `
+                <div class="msg-header"><span>🤖 Assistant</span><span>Analyzing & Retrieving...</span></div>
+                <div class="msg-body"><span class="loader"></span> Running LangGraph self-corrective workflow...</div>
+            `;
+            msgBox.appendChild(assistCard);
+            msgBox.scrollTop = msgBox.scrollHeight;
+
+            try {
+                const res = await fetch('/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: query })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    const citationsHtml = data.citations && data.citations.length > 0 
+                        ? data.citations.map(c => `<span class="badge highlight">📌 ${escapeHtml(c)}</span>`).join(' ')
+                        : '<span class="badge">No citations</span>';
+
+                    const traceHtml = data.trace && data.trace.length > 0
+                        ? `<div class="trace-container">
+                             <div class="trace-title">🔍 Graph Execution Trace (Retries: ${data.retry_count})</div>
+                             ${data.trace.map(t => `<div class="trace-step">${escapeHtml(t)}</div>`).join('')}
+                           </div>`
+                        : '';
+
+                    assistCard.innerHTML = `
+                        <div class="msg-header">
+                            <span>🤖 Assistant</span>
+                            <span>Query Type: <b>${escapeHtml(data.query_type || 'General')}</b></span>
+                        </div>
+                        <div class="msg-body">${formatAnswer(data.answer)}</div>
+                        <div class="meta-badges">
+                            <span class="badge">Citations:</span>
+                            ${citationsHtml}
+                        </div>
+                        ${traceHtml}
+                        <div class="feedback-actions">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Was this helpful?</span>
+                            <button class="fb-btn" onclick="sendFeedback('${escapeHtml(query)}', '${escapeHtml(data.answer)}', 'thumbs_up', this)">👍 Yes</button>
+                            <button class="fb-btn" onclick="sendFeedback('${escapeHtml(query)}', '${escapeHtml(data.answer)}', 'thumbs_down', this)">👎 No</button>
+                        </div>
+                    `;
+                } else {
+                    assistCard.innerHTML = `
+                        <div class="msg-header"><span>🤖 Error</span></div>
+                        <div class="msg-body" style="color: var(--danger);">${data.detail || 'An error occurred'}</div>
+                    `;
+                }
+            } catch (err) {
+                assistCard.innerHTML = `
+                    <div class="msg-header"><span>🤖 Error</span></div>
+                    <div class="msg-body" style="color: var(--danger);">Network error communicating with FastAPI backend.</div>
+                `;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Ask Assistant';
+                msgBox.scrollTop = msgBox.scrollHeight;
+            }
+        }
+
+        async function sendFeedback(question, answer, type, btnElement) {
+            try {
+                await fetch('/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, answer, feedback: type })
+                });
+                btnElement.parentElement.innerHTML = `<span style="color: var(--success); font-size: 0.8rem;">✓ Feedback saved. Thank you!</span>`;
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function formatAnswer(text) {
+            return escapeHtml(text);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', loadDocuments);
+    </script>
+</body>
+</html>
