@@ -112,13 +112,10 @@ def document_grading_node(state: GraphState) -> Dict[str, Any]:
         
     llm = get_llm()
     grading_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a strict technical document grader evaluating relevance to a user question.
-Assess whether the retrieved document chunk contains information relevant to answering the user question.
-Respond ONLY with a JSON object:
-{{
-  "score": "relevant" or "irrelevant",
-  "reason": "brief reason"
-}}"""),
+        ("system", """You are a grader assessing relevance of a retrieved technical document chunk to a user question.
+If the document chunk contains keywords, concepts, or information related to the question, reply with 'YES'.
+Otherwise, reply with 'NO'.
+Respond with only 'YES' or 'NO'."""),
         ("human", "User Question: {question}\n\nDocument Chunk:\n{context}")
     ])
     chain = grading_prompt | llm
@@ -127,13 +124,8 @@ Respond ONLY with a JSON object:
     for i, doc in enumerate(documents):
         try:
             res = chain.invoke({"question": question, "context": doc.page_content})
-            c = res.content.strip()
-            if c.startswith("```json"):
-                c = c[7:-3].strip()
-            elif c.startswith("```"):
-                c = c[3:-3].strip()
-            data = json.loads(c)
-            if data.get("score") == "relevant":
+            c = res.content.strip().upper()
+            if "YES" in c:
                 relevant_docs.append(doc)
         except Exception:
             relevant_docs.append(doc)
